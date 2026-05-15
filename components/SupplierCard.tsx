@@ -1,9 +1,17 @@
 import type { Supplier } from "@/lib/mock-data";
 import { formatPeso } from "@/lib/utils";
 
-export function SupplierCard({ supplier }: { supplier: Supplier }) {
+type SupplierCardProps = {
+  supplier: Supplier;
+  selected?: boolean;
+  onCreateOrder?: () => void;
+};
+
+export function SupplierCard({ supplier, selected, onCreateOrder }: SupplierCardProps) {
   return (
-    <article className="card">
+    <article
+      className={`card transition-all ${selected ? "ring-2 ring-[var(--color-accent)] card-warm" : ""}`}
+    >
       <header className="flex items-start justify-between gap-2">
         <h3 className="font-semibold">{supplier.name}</h3>
         <span className="text-sm text-[var(--color-muted)]">★ {supplier.rating}</span>
@@ -12,7 +20,7 @@ export function SupplierCard({ supplier }: { supplier: Supplier }) {
         {supplier.categories.map((cat) => (
           <span
             key={cat}
-            className="rounded-md bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-700"
+            className="rounded-md bg-white/70 px-2 py-0.5 text-xs font-medium text-stone-700"
           >
             {cat}
           </span>
@@ -32,13 +40,15 @@ export function SupplierCard({ supplier }: { supplier: Supplier }) {
           <dd className="text-sm">{supplier.exampleProducts.join(", ")}</dd>
         </div>
       </dl>
-      <button
-        type="button"
-        disabled
-        className="mt-4 w-full rounded-xl border border-stone-200 bg-stone-50 py-3 text-sm font-medium text-[var(--color-muted)]"
-      >
-        Create order (soon)
-      </button>
+      {selected ? (
+        <p className="mt-4 rounded-xl bg-emerald-50/90 px-3 py-2.5 text-center text-sm font-medium text-emerald-800">
+          Supplier selected for order draft
+        </p>
+      ) : (
+        <button type="button" onClick={onCreateOrder} className="btn-primary mt-4 text-sm !py-3">
+          Create order
+        </button>
+      )}
     </article>
   );
 }

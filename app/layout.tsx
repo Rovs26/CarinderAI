@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ASSETS } from "@/lib/assets";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -7,6 +8,13 @@ export const metadata: Metadata = {
     "Mobile assistant for Philippine carinderia owners — photo orders, daily finance, and demand forecast.",
   applicationName: "CarinderAI",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: ASSETS.appIcon, type: "image/png", sizes: "512x512" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: ASSETS.appIcon, type: "image/png", sizes: "180x180" }],
+  },
   appleWebApp: {
     capable: true,
     title: "CarinderAI",
@@ -32,10 +40,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/icon.svg" />
-      </head>
       <body className="antialiased">{children}</body>
     </html>
   );

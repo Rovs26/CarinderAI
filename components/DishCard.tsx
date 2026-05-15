@@ -3,9 +3,11 @@ import { getCarinderiaName } from "@/lib/mock-data";
 import { formatPeso } from "@/lib/utils";
 import { StatusBadge } from "./StatusBadge";
 
-export function DishCard({ dish }: { dish: Dish }) {
+export function DishCard({ dish, selected }: { dish: Dish; selected?: boolean }) {
   return (
-    <article className="card !p-3">
+    <article
+      className={`card !p-3 transition-all ${selected ? "ring-2 ring-[var(--color-accent)] card-warm" : ""}`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="font-semibold text-sm">{dish.name}</h3>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
@@ -18,14 +18,42 @@ export default function ForecastPage() {
   const [customers, setCustomers] = useState(55);
   const [result, setResult] = useState<ReturnType<typeof computeForecast> | null>(null);
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const runForecast = () => {
     setResult(computeForecast(location, dayType, weather, customers));
+  };
+
+  useEffect(() => {
+    if (result !== null) runForecast();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location, dayType, weather, customers]);
+
+  const useTomorrowSample = () => {
+    setLocation("school");
+    setDayType("weekday");
+    setWeather("rainy");
+    setCustomers(80);
+    setResult(computeForecast("school", "weekday", "rainy", 80));
   };
 
   return (
     <AppShell title="Forecast" subtitle="Plan tomorrow's prep">
-      <form onSubmit={submit} className="card space-y-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          runForecast();
+        }}
+        className="card space-y-4"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Your inputs</h3>
+          <button
+            type="button"
+            onClick={useTomorrowSample}
+            className="text-xs font-semibold text-[var(--color-accent)]"
+          >
+            Use tomorrow sample
+          </button>
+        </div>
         <label className="block">
           <span className="text-sm font-medium text-[var(--color-muted)]">Location</span>
           <select
@@ -82,7 +110,7 @@ export default function ForecastPage() {
       </form>
 
       {result && (
-        <article className="card mt-4 border-orange-200 bg-orange-50">
+        <article className="card-warm card mt-4">
           <div className="flex items-center justify-between gap-2">
             <h3 className="font-semibold">Recommendation</h3>
             <StatusBadge status={result.demand} />
@@ -94,7 +122,7 @@ export default function ForecastPage() {
               {formatPeso(result.ingredientBudget)}
             </strong>
           </p>
-          <ul className="mt-4 space-y-2 border-t border-orange-200/80 pt-3 text-sm text-stone-700">
+          <ul className="mt-4 space-y-2 border-t border-orange-200/60 pt-3 text-sm text-stone-700">
             {result.notes.map((note) => (
               <li key={note} className="flex gap-2">
                 <span className="text-[var(--color-accent)]">•</span>

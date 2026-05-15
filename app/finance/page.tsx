@@ -20,15 +20,24 @@ export default function FinancePage() {
     [totalExpenses, profit, margin]
   );
 
+  const useSampleDay = () => {
+    setRevenue(4850);
+    setIngredients(1650);
+    setOther(450);
+  };
+
   return (
     <AppShell title="Finance" subtitle="Today's numbers">
       <section className="card">
-        <h3 className="text-sm font-semibold">Today&apos;s inputs</h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Today&apos;s inputs</h3>
+          <button type="button" onClick={useSampleDay} className="text-xs font-semibold text-[var(--color-accent)]">
+            Use sample day
+          </button>
+        </div>
         <form className="mt-4 space-y-4" onSubmit={(e) => e.preventDefault()}>
           <label className="block">
-            <span className="text-sm font-medium text-[var(--color-muted)]">
-              Revenue (₱)
-            </span>
+            <span className="text-sm font-medium text-[var(--color-muted)]">Revenue (₱)</span>
             <input
               type="number"
               min={0}
@@ -52,9 +61,7 @@ export default function FinancePage() {
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-[var(--color-muted)]">
-              Other expenses (₱)
-            </span>
+            <span className="text-sm font-medium text-[var(--color-muted)]">Other expenses (₱)</span>
             <input
               type="number"
               min={0}
@@ -69,11 +76,7 @@ export default function FinancePage() {
 
       <div className="mt-4 grid grid-cols-1 gap-3">
         <MetricCard label="Total expenses" value={formatPeso(summary.totalExpenses)} />
-        <MetricCard
-          label="Estimated profit"
-          value={formatPeso(summary.profit)}
-          accent
-        />
+        <MetricCard label="Estimated profit" value={formatPeso(summary.profit)} accent />
         <MetricCard label="Profit margin" value={formatPercent(summary.margin)} />
       </div>
 
@@ -92,7 +95,7 @@ export default function FinancePage() {
             <dt className="text-[var(--color-muted)]">Other</dt>
             <dd className="font-medium">{formatPeso(other)}</dd>
           </div>
-          <div className="flex justify-between border-t border-stone-100 pt-3 text-base">
+          <div className="flex justify-between border-t border-stone-200/80 pt-3 text-base">
             <dt className="font-semibold">Net profit</dt>
             <dd className="font-semibold text-[var(--color-accent)]">
               {formatPeso(summary.profit)}

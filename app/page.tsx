@@ -1,5 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
+import { ASSETS } from "@/lib/assets";
 
 const features = [
   {
@@ -42,6 +44,18 @@ export default function LandingPage() {
         <p className="mt-2 text-sm text-[var(--color-muted)]">
           Snap your handwritten order, confirm items, and prep your palengke run.
         </p>
+
+        <div className="relative mt-4 aspect-[5/2] w-full overflow-hidden rounded-xl border border-orange-100 bg-white/80">
+          <Image
+            src={ASSETS.heroBanner}
+            alt="Carinderia owner using a phone to capture a handwritten supplier order list"
+            fill
+            className="object-cover object-center"
+            sizes="(max-width: 480px) 100vw, 480px"
+            priority
+          />
+        </div>
+
         <div className="mt-5 space-y-2">
           <Link href="/capture-order" className="btn-primary">
             Capture order

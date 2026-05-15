@@ -1,4 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
+import { ASSETS } from "@/lib/assets";
 
 type AppHeaderProps = {
   title?: string;
@@ -7,17 +9,21 @@ type AppHeaderProps = {
 
 export function AppHeader({ title, subtitle }: AppHeaderProps) {
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-white/95 px-4 py-3 backdrop-blur-md">
+    <header className="glass-header sticky top-0 z-40 px-4 py-3">
       <div className="flex items-center gap-3">
-        <Link
-          href="/"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--color-accent)] text-sm font-bold text-white"
-          aria-label="CarinderAI home"
-        >
-          C
+        <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="CarinderAI home">
+          <Image
+            src={ASSETS.logoMark}
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-xl object-contain"
+            priority
+          />
+          <span className="sr-only">CarinderAI</span>
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-semibold leading-tight">
+          <p className="truncate text-base font-semibold leading-tight text-[var(--color-foreground)]">
             {title ?? "CarinderAI"}
           </p>
           {subtitle && (

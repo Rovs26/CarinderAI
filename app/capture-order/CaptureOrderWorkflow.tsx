@@ -1,6 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useState } from "react";
+import { CameraCapture } from "@/components/CameraCapture";
+import { ASSETS, resolveSampleOrderPath } from "@/lib/assets";
 import {
   orderDraftSummary,
   sampleExtractedOrder,
@@ -122,9 +125,16 @@ export function CaptureOrderWorkflow() {
   const [apiWarnings, setApiWarnings] = useState<string[]>([]);
   const [confidence, setConfidence] = useState<"high" | "medium" | "low" | null>(null);
   const [isDemoOrder, setIsDemoOrder] = useState(false);
+  const [isSamplePhoto, setIsSamplePhoto] = useState(false);
+  const [sampleImagePath, setSampleImagePath] = useState<string | null>(null);
+  const [samplePhotoError, setSamplePhotoError] = useState<string | null>(null);
   const [rawText, setRawText] = useState("");
   const [items, setItems] = useState<OrderLineItem[]>([]);
   const [confirmed, setConfirmed] = useState(false);
+
+  const clearPreviewUrl = useCallback((url: string | null) => {
+    if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
+  }, []);
 
   const applyExtraction = useCallback(
     (raw: string, lineItems: OrderLineItem[], opts?: { demo?: boolean }) => {
@@ -138,6 +148,12 @@ export function CaptureOrderWorkflow() {
   );
 
   const loadDemoOrder = useCallback(() => {
+    clearPreviewUrl(previewUrl);
+    setPreviewUrl(null);
+    setImageFile(null);
+    setIsSamplePhoto(false);
+    setSampleImagePath(null);
+    setSamplePhotoError(null);
     setLoading(false);
     setConfirmed(false);
     setFallbackNotice(null);
@@ -145,18 +161,10 @@ export function CaptureOrderWorkflow() {
     setConfidence(null);
     const mock = applyMockExtraction();
     applyExtraction(mock.rawText, mock.items, { demo: true });
-  }, [applyExtraction]);
+  }, [applyExtraction, clearPreviewUrl, previewUrl]);
 
-  const onFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return url;
-    });
-    setImageFile(file);
-    setStep(1);
+  const useSamplePhoto = useCallback(async () => {
+    clearPreviewUrl(previewUrl);
     setExtracted(false);
     setLoading(false);
     setFallbackNotice(null);
@@ -166,8 +174,84 @@ export function CaptureOrderWorkflow() {
     setConfirmed(false);
     setRawText("");
     setItems([]);
-    e.target.value = "";
-  }, []);
+    setSamplePhotoError(null);
+
+    const path = await resolveSampleOrderPath();
+    if (!path) {
+      setSamplePhotoError("Sample photo not found. Use demo order or upload your own.");
+      setIsSamplePhoto(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error("Sample not found");
+      const blob = await res.blob();
+      const ext = path.endsWith(".png") ? "png" : "jpg";
+      const file = new File([blob], `sample-handwritten-order.${ext}`, {
+        type: blob.type || (ext === "png" ? "image/png" : "image/jpeg"),
+      });
+      setImageFile(file);
+      setSampleImagePath(path);
+      setPreviewUrl(path);
+      setIsSamplePhoto(true);
+      setStep(1);
+    } catch {
+      setSamplePhotoError("Could not load sample photo. Try demo order instead.");
+      setIsSamplePhoto(false);
+      setImageFile(null);
+      setPreviewUrl(null);
+      setSampleImagePath(null);
+    }
+  }, [clearPreviewUrl, previewUrl]);
+
+  const handleCameraCapture = useCallback(
+    (file: File, url: string) => {
+      clearPreviewUrl(previewUrl);
+      setPreviewUrl(url);
+      setImageFile(file);
+      setIsSamplePhoto(false);
+      setSampleImagePath(null);
+      setSamplePhotoError(null);
+      setIsDemoOrder(false);
+      setStep(1);
+      setExtracted(false);
+      setLoading(false);
+      setFallbackNotice(null);
+      setApiWarnings([]);
+      setConfidence(null);
+      setConfirmed(false);
+      setRawText("");
+      setItems([]);
+    },
+    [clearPreviewUrl, previewUrl]
+  );
+
+  const onFile = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      clearPreviewUrl(previewUrl);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+      setImageFile(file);
+      setIsSamplePhoto(false);
+      setSampleImagePath(null);
+      setSamplePhotoError(null);
+      setStep(1);
+      setExtracted(false);
+      setLoading(false);
+      setFallbackNotice(null);
+      setApiWarnings([]);
+      setConfidence(null);
+      setIsDemoOrder(false);
+      setConfirmed(false);
+      setRawText("");
+      setItems([]);
+      e.target.value = "";
+    },
+    [clearPreviewUrl, previewUrl]
+  );
 
   const extractOrder = async () => {
     if (!imageFile) return;
@@ -223,9 +307,12 @@ export function CaptureOrderWorkflow() {
   };
 
   const reset = () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    clearPreviewUrl(previewUrl);
     setPreviewUrl(null);
     setImageFile(null);
+    setIsSamplePhoto(false);
+    setSampleImagePath(null);
+    setSamplePhotoError(null);
     setStep(0);
     setExtracted(false);
     setLoading(false);
@@ -240,7 +327,7 @@ export function CaptureOrderWorkflow() {
 
   return (
     <div className="space-y-5 pb-8">
-      <p className="rounded-xl bg-orange-50 px-4 py-3 text-sm leading-relaxed text-stone-800">
+      <p className="card-warm card text-sm leading-relaxed text-stone-800">
         Write your supplier list on paper, take a photo, and CarinderAI turns it into an
         editable order.
       </p>
@@ -263,42 +350,73 @@ export function CaptureOrderWorkflow() {
       <section className="card">
         <p className="text-xs font-semibold uppercase text-[var(--color-accent)]">Step 1</p>
         <h3 className="mt-1 font-semibold">Take or upload photo</h3>
-        <label className="mt-4 flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/50 px-4 py-8 active:bg-orange-50">
-          <span className="text-3xl" aria-hidden>
-            ◉
-          </span>
-          <span className="mt-2 text-base font-semibold">Tap for camera or gallery</span>
-          <span className="mt-1 text-xs text-[var(--color-muted)]">JPG, PNG · max 5MB</span>
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="sr-only"
-            onChange={onFile}
-          />
-        </label>
         {!extracted && (
-          <button
-            type="button"
-            onClick={loadDemoOrder}
-            disabled={loading}
-            className="mt-3 w-full rounded-xl border border-dashed border-stone-300 py-3 text-sm font-medium text-[var(--color-muted)] active:bg-stone-50"
-          >
-            Use demo order
-          </button>
+          <div className="mt-4 space-y-3">
+            <CameraCapture onCapture={handleCameraCapture} disabled={loading} />
+            <label className="upload-zone relative flex min-h-[120px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl px-4 py-5">
+              {!previewUrl && (
+                <div className="pointer-events-none mb-2 h-16 w-16">
+                  <Image
+                    src={ASSETS.captureEmptyState}
+                    alt=""
+                    width={64}
+                    height={64}
+                    className="h-16 w-16 object-contain opacity-85"
+                  />
+                </div>
+              )}
+              <span className="text-sm font-semibold">Upload from gallery</span>
+              <span className="mt-0.5 text-xs text-[var(--color-muted)]">JPG, PNG · max 5MB</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="absolute inset-0 cursor-pointer opacity-0"
+                onChange={onFile}
+                aria-label="Upload supplier order photo"
+              />
+            </label>
+            {samplePhotoError && (
+              <p className="text-xs text-amber-800">{samplePhotoError}</p>
+            )}
+            <button
+              type="button"
+              onClick={useSamplePhoto}
+              disabled={loading}
+              className="btn-secondary text-sm !py-3"
+            >
+              Use sample photo
+            </button>
+            <button type="button" onClick={loadDemoOrder} disabled={loading} className="btn-ghost">
+              Use demo order
+            </button>
+          </div>
         )}
       </section>
 
       {previewUrl && !isDemoOrder && (
         <section className="card">
           <p className="text-xs font-semibold uppercase text-[var(--color-accent)]">Step 2</p>
-          <h3 className="mt-1 font-semibold">Preview</h3>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={previewUrl}
-            alt="Handwritten order list"
-            className="mt-3 max-h-64 w-full rounded-xl border border-stone-200 object-contain bg-stone-50"
-          />
+          <h3 className="mt-1 font-semibold">
+            Preview{isSamplePhoto ? " (sample photo)" : ""}
+          </h3>
+          <div className="relative mt-3 aspect-[4/3] w-full overflow-hidden rounded-xl border border-stone-200 bg-stone-50">
+            {isSamplePhoto && sampleImagePath ? (
+              <Image
+                src={sampleImagePath}
+                alt="Sample handwritten supplier order list on paper"
+                fill
+                className="object-contain"
+                sizes="(max-width: 480px) 100vw, 480px"
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt="Your handwritten supplier order list"
+                className="h-full w-full object-contain"
+              />
+            )}
+          </div>
           {!extracted && (
             <button
               type="button"
@@ -429,7 +547,7 @@ export function CaptureOrderWorkflow() {
       )}
 
       {extracted && !loading && !confirmed && (
-        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 border-t border-[var(--color-border)] bg-white/95 px-4 py-3 backdrop-blur-md md:hidden">
+        <div className="glass-nav fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 px-4 py-3 md:hidden">
           <button type="button" onClick={() => setConfirmed(true)} className="btn-primary">
             Confirm order
           </button>
