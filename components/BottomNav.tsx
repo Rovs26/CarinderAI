@@ -4,7 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const tabs = [
-  { href: "/", label: "Home", match: (p: string) => p === "/" || p === "/owner" || p === "/discover" },
+  {
+    href: "/owner",
+    label: "Dashboard",
+    match: (p: string) => p === "/owner" || p === "/",
+  },
   { href: "/capture-order", label: "Capture", match: (p: string) => p === "/capture-order" },
   { href: "/finance", label: "Finance", match: (p: string) => p === "/finance" },
   { href: "/forecast", label: "Forecast", match: (p: string) => p === "/forecast" },
@@ -38,7 +42,7 @@ export function BottomNav() {
                   }`}
                   aria-hidden
                 >
-                  {tab.label === "Home" && "⌂"}
+                  {tab.label === "Dashboard" && "▦"}
                   {tab.label === "Capture" && "◉"}
                   {tab.label === "Finance" && "₱"}
                   {tab.label === "Forecast" && "☀"}

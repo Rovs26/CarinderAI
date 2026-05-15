@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { MetricCard } from "@/components/MetricCard";
 import { ownerDashboard } from "@/lib/mock-data";
@@ -9,7 +8,6 @@ import { formatPeso, formatPercent } from "@/lib/utils";
 
 export default function OwnerPage() {
   const d = ownerDashboard;
-  const [orderReviewed, setOrderReviewed] = useState(false);
 
   return (
     <AppShell title="Dashboard" subtitle="Aling Rosa's Lutong Bahay">
@@ -24,33 +22,24 @@ export default function OwnerPage() {
         <span className="btn-primary mt-4 inline-flex">Capture order →</span>
       </Link>
 
-      <button
-        type="button"
-        onClick={() => setOrderReviewed(true)}
-        className={`card mt-4 w-full text-left active:scale-[0.99] ${
-          orderReviewed ? "ring-2 ring-emerald-400/50" : ""
-        }`}
+      <Link
+        href="/capture-order"
+        className="card mt-4 block w-full text-left active:scale-[0.99]"
       >
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-semibold">Pending supplier order</h3>
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-              orderReviewed
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-amber-100 text-amber-800"
-            }`}
-          >
-            {orderReviewed ? "Ready for review" : "Review needed"}
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+            Review needed
           </span>
         </div>
         <p className="mt-2 text-sm text-[var(--color-muted)]">
           {d.pendingSupplierOrder.items} items · {formatPeso(d.pendingSupplierOrder.estimatedCost)}{" "}
           est. · {d.pendingSupplierOrder.supplier}
         </p>
-        {!orderReviewed && (
-          <p className="mt-2 text-xs text-[var(--color-accent)]">Tap to mark as reviewed</p>
-        )}
-      </button>
+        <p className="mt-2 text-xs font-semibold text-[var(--color-accent)]">
+          Review latest supplier draft →
+        </p>
+      </Link>
 
       <div className="mt-4 grid grid-cols-2 gap-3">
         <MetricCard compact label="Sales today" value={formatPeso(d.salesToday)} />

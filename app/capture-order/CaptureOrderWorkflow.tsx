@@ -1,21 +1,28 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CameraCapture } from "@/components/CameraCapture";
 import { ASSETS, resolveSampleOrderPath } from "@/lib/assets";
+import { validateImageFile } from "@/lib/image-validation";
 import {
   orderDraftSummary,
   sampleExtractedOrder,
   sampleExtractedText,
   type OrderLineItem,
 } from "@/lib/mock-data";
-import { formatPeso } from "@/lib/utils";
+import { getSelectedSupplier, type StoredSupplier } from "@/lib/supplier-session";
 
 const STEPS = ["Upload", "Preview", "Extract", "Confirm"];
 
-const FALLBACK_MESSAGE =
-  "AI extraction is unavailable right now, so we loaded a demo order you can still test.";
+const FALLBACK_RATE_LIMIT =
+  "Too many extraction attempts. Demo order loaded so you can continue.";
+
+const FALLBACK_UNAVAILABLE =
+  "AI extraction is unavailable right now. Demo order loaded so you can continue.";
+
+const DRAFT_PREPARED_MESSAGE =
+  "Draft is ready. In V3, this will send to the selected supplier.";
 
 type ApiItem = {
   item: string;
@@ -48,6 +55,16 @@ function mapApiItems(items: ApiItem[]): OrderLineItem[] {
   }));
 }
 
+function newBlankItem(): OrderLineItem {
+  return {
+    id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    item: "",
+    quantity: 1,
+    unit: "pcs",
+    notes: "",
+  };
+}
+
 function ConfidenceBadge({ level }: { level: "high" | "medium" | "low" }) {
   const styles = {
     high: "bg-emerald-50 text-emerald-800 border-emerald-200",
@@ -67,12 +84,28 @@ function ConfidenceBadge({ level }: { level: "high" | "medium" | "low" }) {
 function OrderItemFields({
   row,
   updateItem,
+  onRemove,
+  canRemove,
 }: {
   row: OrderLineItem;
   updateItem: (id: string, field: keyof OrderLineItem, value: string | number) => void;
+  onRemove: () => void;
+  canRemove: boolean;
 }) {
   return (
     <>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-[var(--color-muted)]">Line item</span>
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-xs font-semibold text-red-600"
+          >
+            Remove
+          </button>
+        )}
+      </div>
       <label className="block">
         <span className="text-xs text-[var(--color-muted)]">Item</span>
         <input
@@ -122,6 +155,7 @@ export function CaptureOrderWorkflow() {
   const [extracted, setExtracted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [apiWarnings, setApiWarnings] = useState<string[]>([]);
   const [confidence, setConfidence] = useState<"high" | "medium" | "low" | null>(null);
   const [isDemoOrder, setIsDemoOrder] = useState(false);
@@ -131,6 +165,15 @@ export function CaptureOrderWorkflow() {
   const [rawText, setRawText] = useState("");
   const [items, setItems] = useState<OrderLineItem[]>([]);
   const [confirmed, setConfirmed] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<StoredSupplier | null>(null);
+  const [draftPrepared, setDraftPrepared] = useState(false);
+
+  useEffect(() => {
+    setSelectedSupplier(getSelectedSupplier());
+  }, []);
+
+  const supplierLabel =
+    selectedSupplier?.name ?? `Suggested: ${orderDraftSummary.suggestedSupplier}`;
 
   const clearPreviewUrl = useCallback((url: string | null) => {
     if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
@@ -143,6 +186,7 @@ export function CaptureOrderWorkflow() {
       setExtracted(true);
       setStep(3);
       setIsDemoOrder(!!opts?.demo);
+      setDraftPrepared(false);
     },
     []
   );
@@ -154,6 +198,7 @@ export function CaptureOrderWorkflow() {
     setIsSamplePhoto(false);
     setSampleImagePath(null);
     setSamplePhotoError(null);
+    setFileError(null);
     setLoading(false);
     setConfirmed(false);
     setFallbackNotice(null);
@@ -168,6 +213,7 @@ export function CaptureOrderWorkflow() {
     setExtracted(false);
     setLoading(false);
     setFallbackNotice(null);
+    setFileError(null);
     setApiWarnings([]);
     setConfidence(null);
     setIsDemoOrder(false);
@@ -191,6 +237,11 @@ export function CaptureOrderWorkflow() {
       const file = new File([blob], `sample-handwritten-order.${ext}`, {
         type: blob.type || (ext === "png" ? "image/png" : "image/jpeg"),
       });
+      const validationError = validateImageFile(file);
+      if (validationError) {
+        setFileError(validationError);
+        return;
+      }
       setImageFile(file);
       setSampleImagePath(path);
       setPreviewUrl(path);
@@ -213,6 +264,7 @@ export function CaptureOrderWorkflow() {
       setIsSamplePhoto(false);
       setSampleImagePath(null);
       setSamplePhotoError(null);
+      setFileError(validateImageFile(file));
       setIsDemoOrder(false);
       setStep(1);
       setExtracted(false);
@@ -232,6 +284,12 @@ export function CaptureOrderWorkflow() {
       const file = e.target.files?.[0];
       if (!file) return;
       clearPreviewUrl(previewUrl);
+      const validationError = validateImageFile(file);
+      setFileError(validationError);
+      if (validationError) {
+        e.target.value = "";
+        return;
+      }
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
       setImageFile(file);
@@ -253,11 +311,27 @@ export function CaptureOrderWorkflow() {
     [clearPreviewUrl, previewUrl]
   );
 
+  const loadMockFallback = useCallback(
+    (message: string) => {
+      const mock = applyMockExtraction();
+      applyExtraction(mock.rawText, mock.items);
+      setFallbackNotice(message);
+    },
+    [applyExtraction]
+  );
+
   const extractOrder = async () => {
     if (!imageFile) return;
 
+    const validationError = validateImageFile(imageFile);
+    if (validationError) {
+      setFileError(validationError);
+      return;
+    }
+
     setLoading(true);
     setFallbackNotice(null);
+    setFileError(null);
     setApiWarnings([]);
     setConfidence(null);
     setIsDemoOrder(false);
@@ -278,6 +352,11 @@ export function CaptureOrderWorkflow() {
         fallbackAvailable?: boolean;
       };
 
+      if (response.status === 429) {
+        loadMockFallback(FALLBACK_RATE_LIMIT);
+        return;
+      }
+
       if (response.ok && data.items?.length) {
         applyExtraction(data.extractedText, mapApiItems(data.items));
         if (
@@ -289,12 +368,10 @@ export function CaptureOrderWorkflow() {
         }
         setApiWarnings(data.warnings?.filter(Boolean) ?? []);
       } else {
-        throw new Error(data.error ?? "Extraction failed");
+        loadMockFallback(FALLBACK_UNAVAILABLE);
       }
     } catch {
-      const mock = applyMockExtraction();
-      applyExtraction(mock.rawText, mock.items);
-      setFallbackNotice(FALLBACK_MESSAGE);
+      loadMockFallback(FALLBACK_UNAVAILABLE);
     } finally {
       setLoading(false);
     }
@@ -306,6 +383,16 @@ export function CaptureOrderWorkflow() {
     );
   };
 
+  const addItem = () => {
+    setItems((prev) => [...prev, newBlankItem()]);
+    setDraftPrepared(false);
+  };
+
+  const removeItem = (id: string) => {
+    setItems((prev) => prev.filter((row) => row.id !== id));
+    setDraftPrepared(false);
+  };
+
   const reset = () => {
     clearPreviewUrl(previewUrl);
     setPreviewUrl(null);
@@ -313,6 +400,7 @@ export function CaptureOrderWorkflow() {
     setIsSamplePhoto(false);
     setSampleImagePath(null);
     setSamplePhotoError(null);
+    setFileError(null);
     setStep(0);
     setExtracted(false);
     setLoading(false);
@@ -321,16 +409,26 @@ export function CaptureOrderWorkflow() {
     setConfidence(null);
     setIsDemoOrder(false);
     setConfirmed(false);
+    setDraftPrepared(false);
     setRawText("");
     setItems([]);
   };
 
+  const bottomBarVisible = extracted && !loading && !confirmed;
+
   return (
-    <div className="space-y-5 pb-8">
+    <div className={`space-y-5 ${bottomBarVisible ? "pb-36" : "pb-8"}`}>
       <p className="card-warm card text-sm leading-relaxed text-stone-800">
         Write your supplier list on paper, take a photo, and CarinderAI turns it into an
         editable order.
       </p>
+
+      {selectedSupplier && (
+        <p className="rounded-xl border border-orange-200/80 bg-orange-50/90 px-4 py-2.5 text-sm text-stone-800">
+          <span className="font-semibold text-[var(--color-accent)]">Supplier selected:</span>{" "}
+          {selectedSupplier.name}
+        </p>
+      )}
 
       <ol className="flex gap-1">
         {STEPS.map((label, i) => (
@@ -347,10 +445,10 @@ export function CaptureOrderWorkflow() {
         ))}
       </ol>
 
-      <section className="card">
-        <p className="text-xs font-semibold uppercase text-[var(--color-accent)]">Step 1</p>
-        <h3 className="mt-1 font-semibold">Take or upload photo</h3>
-        {!extracted && (
+      {!extracted && (
+        <section className="card">
+          <p className="text-xs font-semibold uppercase text-[var(--color-accent)]">Step 1</p>
+          <h3 className="mt-1 font-semibold">Take or upload photo</h3>
           <div className="mt-4 space-y-3">
             <CameraCapture onCapture={handleCameraCapture} disabled={loading} />
             <label className="upload-zone relative flex min-h-[120px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl px-4 py-5">
@@ -375,6 +473,11 @@ export function CaptureOrderWorkflow() {
                 aria-label="Upload supplier order photo"
               />
             </label>
+            {fileError && (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                {fileError}
+              </p>
+            )}
             {samplePhotoError && (
               <p className="text-xs text-amber-800">{samplePhotoError}</p>
             )}
@@ -390,8 +493,8 @@ export function CaptureOrderWorkflow() {
               Use demo order
             </button>
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {previewUrl && !isDemoOrder && (
         <section className="card">
@@ -418,14 +521,21 @@ export function CaptureOrderWorkflow() {
             )}
           </div>
           {!extracted && (
-            <button
-              type="button"
-              onClick={extractOrder}
-              disabled={loading || !imageFile}
-              className="btn-primary mt-4 disabled:opacity-60"
-            >
-              {loading ? "Reading handwritten order..." : "Extract order"}
-            </button>
+            <>
+              {fileError && (
+                <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  {fileError}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={extractOrder}
+                disabled={loading || !imageFile || !!fileError}
+                className="btn-primary mt-4 disabled:opacity-60"
+              >
+                {loading ? "Reading handwritten order..." : "Extract order"}
+              </button>
+            </>
           )}
         </section>
       )}
@@ -472,83 +582,62 @@ export function CaptureOrderWorkflow() {
             </ul>
           )}
 
-          <h3 className="mt-6 font-semibold">Edit items</h3>
+          <div className="mt-6 flex items-center justify-between gap-2">
+            <h3 className="font-semibold">Edit items</h3>
+            <button type="button" onClick={addItem} className="text-sm font-semibold text-[var(--color-accent)]">
+              + Add item
+            </button>
+          </div>
 
-          <ul className="mt-3 space-y-3 md:hidden">
+          <ul className="mt-3 space-y-3">
             {items.map((row) => (
               <li
                 key={row.id}
                 className="space-y-3 rounded-xl border border-stone-200 bg-stone-50/50 p-3"
               >
-                <OrderItemFields row={row} updateItem={updateItem} />
+                <OrderItemFields
+                  row={row}
+                  updateItem={updateItem}
+                  onRemove={() => removeItem(row.id)}
+                  canRemove={items.length > 1}
+                />
               </li>
             ))}
           </ul>
 
-          <div className="mt-3 hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[520px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-stone-200 text-[var(--color-muted)]">
-                  <th className="pb-2 pr-2 font-medium">Item</th>
-                  <th className="pb-2 pr-2 font-medium">Qty</th>
-                  <th className="pb-2 pr-2 font-medium">Unit</th>
-                  <th className="pb-2 font-medium">Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((row) => (
-                  <tr key={row.id} className="border-b border-stone-100">
-                    <td className="py-2 pr-2">
-                      <input
-                        className="w-full rounded-lg border border-stone-200 px-2 py-2"
-                        value={row.item}
-                        onChange={(e) => updateItem(row.id, "item", e.target.value)}
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        type="number"
-                        className="w-20 rounded-lg border border-stone-200 px-2 py-2"
-                        value={row.quantity}
-                        onChange={(e) =>
-                          updateItem(row.id, "quantity", Number(e.target.value) || 0)
-                        }
-                      />
-                    </td>
-                    <td className="py-2 pr-2">
-                      <input
-                        className="w-24 rounded-lg border border-stone-200 px-2 py-2"
-                        value={row.unit}
-                        onChange={(e) => updateItem(row.id, "unit", e.target.value)}
-                      />
-                    </td>
-                    <td className="py-2">
-                      <input
-                        className="w-full rounded-lg border border-stone-200 px-2 py-2"
-                        value={row.notes}
-                        onChange={(e) => updateItem(row.id, "notes", e.target.value)}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {items.length === 0 && (
+            <p className="mt-3 text-sm text-[var(--color-muted)]">
+              No items yet. Add at least one line for your supplier draft.
+            </p>
+          )}
 
-          <div className="mt-4 hidden gap-2 md:flex">
-            <button type="button" onClick={reset} className="btn-secondary !w-auto flex-1">
-              Reset
-            </button>
-            <button type="button" disabled className="btn-secondary !w-auto flex-1 opacity-50">
-              Send to supplier
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setDraftPrepared(true)}
+            className="btn-secondary mt-4 text-sm !py-3"
+          >
+            Prepare supplier draft
+          </button>
+          {draftPrepared && (
+            <p className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/90 px-3 py-2.5 text-sm text-emerald-900">
+              {DRAFT_PREPARED_MESSAGE}
+            </p>
+          )}
+
+          <button type="button" onClick={reset} className="btn-ghost mt-3 text-sm">
+            Reset workflow
+          </button>
         </section>
       )}
 
-      {extracted && !loading && !confirmed && (
-        <div className="glass-nav fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 px-4 py-3 md:hidden">
-          <button type="button" onClick={() => setConfirmed(true)} className="btn-primary">
+      {bottomBarVisible && (
+        <div className="glass-nav fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-[480px] -translate-x-1/2 px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setConfirmed(true)}
+            disabled={items.length === 0}
+            className="btn-primary disabled:opacity-60"
+          >
             Confirm order
           </button>
           <button
@@ -557,14 +646,6 @@ export function CaptureOrderWorkflow() {
             className="mt-2 w-full py-2 text-center text-sm font-medium text-[var(--color-muted)]"
           >
             Reset
-          </button>
-        </div>
-      )}
-
-      {extracted && !loading && !confirmed && (
-        <div className="hidden md:block">
-          <button type="button" onClick={() => setConfirmed(true)} className="btn-primary">
-            Confirm order
           </button>
         </div>
       )}
@@ -581,17 +662,18 @@ export function CaptureOrderWorkflow() {
               <strong>{items.length}</strong>
             </li>
             <li className="flex justify-between gap-2 border-b border-emerald-200/60 pb-2">
-              <span>Estimated total</span>
-              <strong>{formatPeso(orderDraftSummary.estimatedTotalCost)}</strong>
+              <span>Estimate</span>
+              <strong className="text-right text-xs font-semibold leading-snug">
+                Estimate pending supplier confirmation
+              </strong>
             </li>
             <li className="flex justify-between gap-2">
-              <span>Suggested supplier</span>
-              <strong className="text-right">{orderDraftSummary.suggestedSupplier}</strong>
+              <span>{selectedSupplier ? "Supplier" : "Suggested supplier"}</span>
+              <strong className="text-right">{supplierLabel}</strong>
             </li>
           </ul>
           <p className="mt-4 rounded-lg bg-white/60 px-3 py-2 text-sm text-emerald-800">
-            <strong>Next step:</strong> Share this draft with your supplier for pricing and
-            delivery confirmation.
+            <strong>Next step:</strong> Review with supplier before sending.
           </p>
           <button type="button" onClick={reset} className="btn-secondary mt-4">
             Start new order

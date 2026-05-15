@@ -11,12 +11,19 @@ import {
 } from "@/lib/mock-data";
 import { formatPeso } from "@/lib/utils";
 
+const DEFAULT_LOCATION: LocationType = "office";
+const DEFAULT_DAY: DayType = "weekday";
+const DEFAULT_WEATHER: WeatherType = "sunny";
+const DEFAULT_CUSTOMERS = 55;
+
 export default function ForecastPage() {
-  const [location, setLocation] = useState<LocationType>("office");
-  const [dayType, setDayType] = useState<DayType>("weekday");
-  const [weather, setWeather] = useState<WeatherType>("sunny");
-  const [customers, setCustomers] = useState(55);
-  const [result, setResult] = useState<ReturnType<typeof computeForecast> | null>(null);
+  const [location, setLocation] = useState<LocationType>(DEFAULT_LOCATION);
+  const [dayType, setDayType] = useState<DayType>(DEFAULT_DAY);
+  const [weather, setWeather] = useState<WeatherType>(DEFAULT_WEATHER);
+  const [customers, setCustomers] = useState(DEFAULT_CUSTOMERS);
+  const [result, setResult] = useState<ReturnType<typeof computeForecast> | null>(() =>
+    computeForecast(DEFAULT_LOCATION, DEFAULT_DAY, DEFAULT_WEATHER, DEFAULT_CUSTOMERS)
+  );
 
   const runForecast = () => {
     setResult(computeForecast(location, dayType, weather, customers));
@@ -36,7 +43,7 @@ export default function ForecastPage() {
   };
 
   return (
-    <AppShell title="Forecast" subtitle="Plan tomorrow's prep">
+    <AppShell title="Forecast" subtitle="Rule-based demo forecast">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -93,7 +100,7 @@ export default function ForecastPage() {
         </label>
         <label className="block">
           <span className="text-sm font-medium text-[var(--color-muted)]">
-            Expected customers today
+            Expected customers tomorrow
           </span>
           <input
             type="number"
@@ -111,7 +118,8 @@ export default function ForecastPage() {
 
       {result && (
         <article className="card-warm card mt-4">
-          <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-[var(--color-muted)]">Rule-based demo forecast</p>
+          <div className="mt-2 flex items-center justify-between gap-2">
             <h3 className="font-semibold">Recommendation</h3>
             <StatusBadge status={result.demand} />
           </div>
