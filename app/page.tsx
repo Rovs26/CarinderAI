@@ -64,6 +64,14 @@ export default function LandingPage() {
             Owner dashboard
           </Link>
         </div>
+        <p className="mt-4 text-center">
+          <a
+            href="#story"
+            className="text-sm font-semibold text-[var(--color-accent)] underline-offset-2 hover:underline"
+          >
+            Read our story
+          </a>
+        </p>
       </section>
 
       <section className="mt-6">
@@ -97,6 +105,37 @@ export default function LandingPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section id="story" className="card-warm card mt-6 scroll-mt-28">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-accent)]">
+          About CarinderAI
+        </p>
+        <h2 className="mt-2 text-lg font-bold leading-snug">Our Story</h2>
+        <div className="mt-3 space-y-3 text-sm leading-relaxed text-stone-700">
+          <p>
+            CarinderAI was born from a simple idea: help carinderia owners spend less time on
+            manual work and more time serving affordable meals to their community.
+          </p>
+          <p>
+            Traditional eateries like carinderias and turo-turo have always been close to Filipino
+            daily life, but many still manage orders, supplies, sales, and planning through paper
+            lists and memory.
+          </p>
+          <p>
+            CarinderAI brings that daily workflow into one simple mobile app: capture paper supplier
+            lists, prepare order drafts, track daily profit, and plan for tomorrow&apos;s demand.
+          </p>
+        </div>
+        <blockquote className="mt-4 rounded-xl border border-orange-200/70 bg-white/55 px-3 py-3 text-sm leading-relaxed text-stone-700">
+          <span className="text-[var(--color-accent)]" aria-hidden>
+            &ldquo;
+          </span>
+          Built for owners who still use paper lists, but deserve better tools.
+          <span className="text-[var(--color-accent)]" aria-hidden>
+            &rdquo;
+          </span>
+        </blockquote>
       </section>
 
       <section className="mt-6 grid grid-cols-2 gap-3">
