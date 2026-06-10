@@ -1,35 +1,60 @@
 import Image from "next/image";
-import Link from "next/link";
-import { ASSETS } from "@/lib/assets";
+import type { ReactNode } from "react";
 
-type AppHeaderProps = {
-  title?: string;
+export interface AppHeaderProps {
+  title: string;
   subtitle?: string;
-};
+  /**
+   * Optional pill rendered to the right of the title (e.g., a "Beta" tag
+   * or a "+ New entry" CTA Link).
+   */
+  trailing?: ReactNode;
+  /**
+   * Show the small CarinderAI logo on the left. Defaults to true.
+   */
+  showLogo?: boolean;
+}
 
-export function AppHeader({ title, subtitle }: AppHeaderProps) {
+/**
+ * Sticky top header used by every page surface.
+ *
+ * - `top-bar` utility (defined in globals.css) applies the flat white bg
+ *   plus 1px bottom border, matching the FB/YouTube-style design system.
+ * - Sticky `top-0 z-40` so it sits above page content but below the
+ *   bottom nav (z-30) — it lives inside the PhoneFrame, so it scrolls
+ *   with the column on overscroll but stays pinned during normal scroll.
+ * - The logo is loaded from `/assets/logo.png` (32x32 rounded-xl). Pass
+ *   `showLogo={false}` to hide it on a page that needs more horizontal
+ *   room (e.g., a deep detail page with a back link).
+ *
+ * Pure presentational and RSC-safe.
+ */
+export function AppHeader({
+  title,
+  subtitle,
+  trailing,
+  showLogo = true,
+}: AppHeaderProps) {
   return (
-    <header className="glass-header sticky top-0 z-40 px-4 py-3">
+    <header className="top-bar sticky top-0 z-40 px-4 py-3">
       <div className="flex items-center gap-3">
-        <Link href="/" className="flex shrink-0 items-center gap-2" aria-label="CarinderAI home">
+        {showLogo ? (
           <Image
-            src={ASSETS.logoMark}
-            alt=""
+            src="/assets/logo.png"
+            alt="CarinderAI"
             width={32}
             height={32}
-            className="h-8 w-8 rounded-xl object-contain"
+            className="rounded-xl shrink-0"
             priority
           />
-          <span className="sr-only">CarinderAI</span>
-        </Link>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-base font-semibold leading-tight text-[var(--color-foreground)]">
-            {title ?? "CarinderAI"}
-          </p>
-          {subtitle && (
-            <p className="truncate text-xs text-[var(--color-muted)]">{subtitle}</p>
-          )}
+        ) : null}
+        <div className="flex flex-1 flex-col leading-tight">
+          <h1 className="text-base font-semibold text-ink">{title}</h1>
+          {subtitle ? (
+            <p className="text-xs text-muted">{subtitle}</p>
+          ) : null}
         </div>
+        {trailing ? <div className="shrink-0">{trailing}</div> : null}
       </div>
     </header>
   );

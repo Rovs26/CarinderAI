@@ -1,63 +1,73 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme inline {
-  --color-background: #faf7f2;
-  --color-foreground: #292524;
+:root {
+  --color-background: #ffffff;
+  --color-surface: #fafafa;
+  --color-section: #f0f2f5;
+  --color-foreground: #1a1a1a;
   --color-accent: #ea580c;
   --color-accent-hover: #c2410c;
-  --color-muted: #78716c;
-  --color-border: rgba(255, 255, 255, 0.65);
-  --color-card: rgba(255, 255, 255, 0.72);
+  --color-muted: #65676b;
+  --color-border: #e5e5e5;
+  --color-border-strong: #d1d5db;
 }
 
 body {
-  background: #ebe6dc;
+  background: var(--color-background);
   color: var(--color-foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI",
-    Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
 
 @layer components {
-  .glass-phone {
-    background: var(--color-background);
-  }
+  .surface-app { background: var(--color-background); }
+  .surface-section { background: var(--color-section); }
 
   .card {
-    border-radius: 1rem;
+    border-radius: 0.75rem;
     padding: 1rem;
-    background: rgba(255, 255, 255, 0.72);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border: 1px solid rgba(255, 255, 255, 0.65);
-    box-shadow: 0 4px 24px rgba(28, 25, 23, 0.06);
+    background: #ffffff;
+    border: 1px solid var(--color-border);
   }
 
-  .card-warm {
-    background: rgba(255, 247, 237, 0.82);
-    border: 1px solid rgba(234, 88, 12, 0.18);
-    box-shadow: 0 4px 20px rgba(234, 88, 12, 0.08);
+  .card-flat {
+    border-radius: 0;
+    padding: 1rem;
+    background: #ffffff;
+    border-bottom: 1px solid var(--color-border);
   }
 
-  .glass-header {
-    background: rgba(255, 255, 255, 0.78);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+  .section-band {
+    background: var(--color-section);
+    height: 8px;
+    width: 100%;
   }
 
-  .glass-nav {
-    background: rgba(255, 255, 255, 0.78);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(255, 255, 255, 0.7);
-    box-shadow: 0 -4px 24px rgba(28, 25, 23, 0.05);
+  .top-bar {
+    background: #ffffff;
+    border-bottom: 1px solid var(--color-border);
   }
+
+  .bottom-bar {
+    background: #ffffff;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .tap-row {
+    @apply flex w-full items-center gap-3 px-4 py-3.5 text-left;
+    background: #ffffff;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .tap-row:active { background: var(--color-section); }
 
   .input-touch {
-    @apply w-full rounded-xl px-4 py-3.5 text-base text-[var(--color-foreground)] outline-none;
-    background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(231, 229, 228, 0.9);
+    @apply w-full rounded-lg px-3.5 py-2.5 text-base outline-none;
+    color: var(--color-foreground);
+    background: #ffffff;
+    border: 1px solid var(--color-border-strong);
   }
 
   .input-touch:focus {
@@ -66,42 +76,48 @@ body {
   }
 
   .btn-primary {
-    @apply flex w-full items-center justify-center rounded-xl px-4 py-3.5 text-base font-semibold text-white;
+    @apply flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-base font-semibold text-white;
     background: var(--color-accent);
-    box-shadow: 0 4px 20px rgba(234, 88, 12, 0.35);
   }
 
-  .btn-primary:active {
-    background: var(--color-accent-hover);
-    transform: scale(0.99);
-  }
-
-  .btn-primary:disabled {
-    opacity: 0.55;
-    box-shadow: none;
-  }
+  .btn-primary:hover { background: var(--color-accent-hover); }
+  .btn-primary:active { transform: scale(0.99); }
+  .btn-primary:disabled { opacity: 0.5; }
 
   .btn-secondary {
-    @apply flex w-full items-center justify-center rounded-xl px-4 py-3.5 text-base font-semibold text-[var(--color-foreground)];
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid rgba(231, 229, 228, 0.9);
-    backdrop-filter: blur(8px);
+    @apply flex w-full items-center justify-center rounded-lg px-4 py-2.5 text-base font-semibold;
+    color: var(--color-foreground);
+    background: #ffffff;
+    border: 1px solid var(--color-border-strong);
   }
 
-  .btn-secondary:active {
-    background: rgba(250, 250, 249, 0.95);
-    transform: scale(0.99);
-  }
+  .btn-secondary:hover { background: var(--color-surface); }
+  .btn-secondary:active { transform: scale(0.99); }
 
   .btn-ghost {
-    @apply w-full rounded-xl py-3 text-sm font-medium;
-    background: rgba(255, 255, 255, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.8);
+    @apply rounded-lg px-3 py-2 text-sm font-medium;
+    color: var(--color-accent);
+    background: transparent;
+  }
+
+  .btn-ghost:hover { background: var(--color-surface); }
+
+  .upload-zone {
+    @apply flex flex-col items-center justify-center gap-2 rounded-lg p-6;
+    background: var(--color-surface);
+    border: 2px dashed var(--color-border-strong);
+  }
+
+  .pill {
+    @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium;
+    border-color: var(--color-border);
+    background: #ffffff;
     color: var(--color-muted);
   }
 
-  .upload-zone {
-    background: rgba(255, 247, 237, 0.5);
-    border: 2px dashed rgba(234, 88, 12, 0.35);
+  .pill-active {
+    background: var(--color-accent);
+    color: #ffffff;
+    border-color: var(--color-accent);
   }
 }

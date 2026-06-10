@@ -1,0 +1,107 @@
+// Prisma schema for CarinderAI
+// See: .kiro/specs/carinderai/design.md §Data Models / §Prisma Schema
+// Requirements: 14.1–14.13, 7.9
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Unit {
+  kg
+  pc
+  L
+  pack
+}
+
+enum JournalEntryType {
+  REVENUE
+  EXPENSE
+}
+
+model Supplier {
+  id       String    @id @default(cuid())
+  name     String
+  logoUrl  String
+  category String
+  products Product[]
+}
+
+model Product {
+  id         String      @id @default(cuid())
+  supplierId String
+  supplier   Supplier    @relation(fields: [supplierId], references: [id])
+  name       String
+  category   String // 'Meat & Eggs' | 'Fish' | 'Vegetables' | 'Condiments' | 'Rice/Grains'
+  unit       Unit
+  pricePhp   Float
+  stock      Int
+  imageUrl   String // single emoji glyph per Req 14.2
+  orderItems OrderItem[]
+
+  @@index([category])
+  @@index([supplierId])
+}
+
+model Order {
+  id        String         @id @default(cuid())
+  status    String // 'PLACED' (only value used in Tier 1)
+  createdAt DateTime       @default(now())
+  totalPhp  Float
+  items     OrderItem[]
+  journal   JournalEntry[] // back-relation; in practice exactly one
+
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id                String  @id @default(cuid())
+  orderId           String
+  order             Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product @relation(fields: [productId], references: [id])
+  quantity          Float
+  unitPriceSnapshot Float
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model JournalEntry {
+  id            String           @id @default(cuid())
+  date          DateTime
+  type          JournalEntryType
+  category      String // 'Supplies' | 'Palengke' | 'Sales' | free text for manual
+  amountPhp     Float
+  note          String?
+  sourceOrderId String?
+  sourceOrder   Order?           @relation(fields: [sourceOrderId], references: [id])
+
+  @@index([date])
+  @@index([type])
+  @@index([sourceOrderId])
+}
+
+model Carinderia {
+  id         String     @id @default(cuid())
+  name       String
+  address    String
+  distanceKm Float
+  rating     Float
+  priceRange String // e.g. '₱'..'₱₱₱'
+  topDish    String
+  imageUrl   String
+  menuItems  MenuItem[]
+}
+
+model MenuItem {
+  id           String     @id @default(cuid())
+  carinderiaId String
+  carinderia   Carinderia @relation(fields: [carinderiaId], references: [id], onDelete: Cascade)
+  name         String
+  pricePhp     Float
+}
